@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+@layer base {
+  body {
+    @apply font-sans antialiased;
+  }
+}
+
+/* Custom utilities */
+@layer utilities {
+  .section-padding {
+    @apply py-16 md:py-24 px-6 md:px-8;
+  }
+
+  .container-custom {
+    @apply max-w-7xl mx-auto;
+  }
+}

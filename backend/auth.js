@@ -91,17 +91,25 @@ router.post('/register', async (req, res) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Create user with direct INSERT (no stored function needed)
     const result = await pool.query(
-      'SELECT create_user_with_profile($1, $2, $3, $4, $5) as user_id',
+      `INSERT INTO users (email, password_hash, full_name, phone, user_type)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
       [email.toLowerCase(), passwordHash, fullName, phone, userType]
     );
 
-    const userId = result.rows[0].user_id;
+    const userId = result.rows[0].id;
+
+    // Create empty profile
+    await pool.query(
+      `INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING`,
+      [userId]
+    );
 
     res.status(201).json({
       success: true,
-      message: 'Registration successful. Please verify your email.',
+      message: 'Registration successful!',
       data: { userId, email: email.toLowerCase(), fullName, userType }
     });
 

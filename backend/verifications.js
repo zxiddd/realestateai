@@ -3,10 +3,12 @@ import multer from 'multer';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
-// Try to load pdf-parse, use a fallback if it fails
+// Load pdf-parse - it exports differently in different environments
 let pdfParse = null;
 try {
-    pdfParse = require('pdf-parse');
+    const pdfModule = require('pdf-parse');
+    // Handle both default export and module itself
+    pdfParse = pdfModule.default || pdfModule;
     console.log('✅ pdf-parse loaded successfully');
 } catch (err) {
     console.error('⚠️ pdf-parse failed to load:', err.message);

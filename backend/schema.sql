@@ -1,75 +1,87 @@
 -- ============================================
--- BHOOMIAI DATABASE SCHEMA
--- PostgreSQL Schema for Authentication System
+-- BHOOMIAI COMPLETE DATABASE SCHEMA
+-- PostgreSQL Schema - All Tables
+-- Version: 1.0
+-- Last Updated: 2024-12-24
 -- ============================================
 
--- Enable UUID extension for generating unique IDs
+-- Enable Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================
--- USERS TABLE
+-- 1. USERS TABLE
 -- Core user authentication and profile data
 -- ============================================
-CREATE TABLE users (
-    -- Primary Key
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-
-    -- Authentication Fields
+    
+    -- Authentication
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-
-    -- Profile Information
+    
+    -- Profile
     full_name VARCHAR(255) NOT NULL,
     phone VARCHAR(15) NOT NULL,
-
-    -- User Type (from registration form)
     user_type VARCHAR(50) NOT NULL CHECK (user_type IN ('buyer', 'bank', 'advocate', 'government')),
-
-    -- Account Status
+    
+    -- Roles
     is_active BOOLEAN DEFAULT true,
     is_verified BOOLEAN DEFAULT false,
+    is_admin BOOLEAN DEFAULT false,
     email_verified_at TIMESTAMP,
-
+    
     -- Security
     last_login_at TIMESTAMP,
     last_login_ip VARCHAR(45),
     failed_login_attempts INTEGER DEFAULT 0,
     locked_until TIMESTAMP,
-
+    
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP -- Soft delete
+    deleted_at TIMESTAMP
 );
 
--- Indexes for users table
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_user_type ON users(user_type);
-CREATE INDEX idx_users_is_active ON users(is_active);
-CREATE INDEX idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_user_type ON users(user_type);
+CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 
 -- ============================================
--- EMAIL VERIFICATION TOKENS
--- For verifying user email addresses
+-- 2. USER PROFILES (Extended Information)
 -- ============================================
-CREATE TABLE email_verification_tokens (
+CREATE TABLE IF NOT EXISTS user_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token VARCHAR(255) UNIQUE NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    
+    -- Organization Details
+    organization_name VARCHAR(255),
+    organization_type VARCHAR(100),
+    registration_number VARCHAR(100),
+    
+    -- Address
+    address_line1 TEXT,
+    address_line2 TEXT,
+    city VARCHAR(100),
+    state VARCHAR(100),
+    pincode VARCHAR(10),
+    country VARCHAR(100) DEFAULT 'India',
+    
+    -- Contact
+    alternate_phone VARCHAR(15),
+    whatsapp_number VARCHAR(15),
+    
+    profile_completed BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for quick token lookup
-CREATE INDEX idx_email_verification_token ON email_verification_tokens(token);
-CREATE INDEX idx_email_verification_user_id ON email_verification_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 
 -- ============================================
--- REFRESH TOKENS (JWT)
--- For managing authentication sessions
+-- 3. REFRESH TOKENS (JWT Sessions)
 -- ============================================
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(500) UNIQUE NOT NULL,
@@ -80,53 +92,137 @@ CREATE TABLE refresh_tokens (
     user_agent TEXT
 );
 
--- Indexes for refresh tokens
-CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
-CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
 
 -- ============================================
--- PASSWORD RESET TOKENS
--- For handling password reset requests
+-- 4. PROPERTY VERIFICATIONS TABLE
+-- Main verification records with JSONB data
 -- ============================================
-CREATE TABLE password_reset_tokens (
+CREATE TABLE IF NOT EXISTS property_verifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token VARCHAR(255) UNIQUE NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    used_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Indexes for password reset tokens
-CREATE INDEX idx_password_reset_token ON password_reset_tokens(token);
-CREATE INDEX idx_password_reset_user_id ON password_reset_tokens(user_id);
-
--- ============================================
--- USER SESSIONS (Alternative to JWT)
--- For traditional session-based auth
--- ============================================
-CREATE TABLE user_sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    session_token VARCHAR(255) UNIQUE NOT NULL,
-    ip_address VARCHAR(45),
-    user_agent TEXT,
-    expires_at TIMESTAMP NOT NULL,
+    status VARCHAR(50) DEFAULT 'processing',
+    verification_data JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes for sessions
-CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
-CREATE INDEX idx_user_sessions_token ON user_sessions(session_token);
-CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_prop_verif_user_id ON property_verifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_prop_verif_status ON property_verifications(status);
+CREATE INDEX IF NOT EXISTS idx_prop_verif_data ON property_verifications USING GIN (verification_data);
 
 -- ============================================
--- AUDIT LOG
--- Track important user actions for security
+-- 5. PROPERTIES TABLE (Legacy - for marketplace)
 -- ============================================
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS properties (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    
+    survey_no VARCHAR(100) NOT NULL,
+    village VARCHAR(255) NOT NULL,
+    mandal VARCHAR(255) NOT NULL,
+    district VARCHAR(255) NOT NULL,
+    state VARCHAR(255) DEFAULT 'Telangana',
+    land_type VARCHAR(50) CHECK (land_type IN ('agricultural', 'residential', 'commercial', 'industrial')),
+    owner_name VARCHAR(255) NOT NULL,
+    
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'verified', 'failed')),
+    risk_score INTEGER,
+    risk_level VARCHAR(20) CHECK (risk_level IN ('low', 'medium', 'high')),
+    verification_summary TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    verified_at TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_properties_user_id ON properties(user_id);
+CREATE INDEX IF NOT EXISTS idx_properties_status ON properties(status);
+
+-- ============================================
+-- 6. MARKETPLACE LISTINGS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS marketplace_listings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    
+    price DECIMAL(15,2) NOT NULL,
+    area DECIMAL(10,2),
+    description TEXT,
+    
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'sold', 'withdrawn')),
+    listed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sold_at TIMESTAMP,
+    withdrawn_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_marketplace_property_id ON marketplace_listings(property_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_user_id ON marketplace_listings(user_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_status ON marketplace_listings(status);
+
+-- ============================================
+-- 7. ADVOCATES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS advocates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    specialization VARCHAR(255),
+    bar_registration_no VARCHAR(100),
+    
+    verified BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    total_responses INTEGER DEFAULT 0,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    verified_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_advocates_email ON advocates(email);
+CREATE INDEX IF NOT EXISTS idx_advocates_verified ON advocates(verified);
+
+-- ============================================
+-- 8. LEGAL QUERIES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS legal_queries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+    
+    question TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'answered', 'closed')),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_legal_queries_user_id ON legal_queries(user_id);
+CREATE INDEX IF NOT EXISTS idx_legal_queries_status ON legal_queries(status);
+
+-- ============================================
+-- 9. LEGAL RESPONSES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS legal_responses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    query_id UUID NOT NULL REFERENCES legal_queries(id) ON DELETE CASCADE,
+    advocate_id UUID NOT NULL REFERENCES advocates(id) ON DELETE SET NULL,
+    
+    answer TEXT NOT NULL,
+    responded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_legal_responses_query_id ON legal_responses(query_id);
+CREATE INDEX IF NOT EXISTS idx_legal_responses_advocate_id ON legal_responses(advocate_id);
+
+-- ============================================
+-- 10. AUDIT LOGS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     action VARCHAR(100) NOT NULL,
@@ -138,50 +234,11 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes for audit logs
-CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
-
--- ============================================
--- USER PROFILES (Extended Information)
--- Additional profile data separate from auth
--- ============================================
-CREATE TABLE user_profiles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-
-    -- Organization Details (for banks, advocates, govt)
-    organization_name VARCHAR(255),
-    organization_type VARCHAR(100),
-    registration_number VARCHAR(100),
-
-    -- Address Information
-    address_line1 TEXT,
-    address_line2 TEXT,
-    city VARCHAR(100),
-    state VARCHAR(100),
-    pincode VARCHAR(10),
-    country VARCHAR(100) DEFAULT 'India',
-
-    -- Additional Contact
-    alternate_phone VARCHAR(15),
-    whatsapp_number VARCHAR(15),
-
-    -- Profile Completion
-    profile_completed BOOLEAN DEFAULT false,
-
-    -- Timestamps
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Index for user profiles
-CREATE INDEX idx_user_profiles_user_id ON user_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
 
 -- ============================================
 -- TRIGGERS
--- Auto-update timestamps
 -- ============================================
 
 -- Function to update updated_at timestamp
@@ -193,53 +250,45 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply trigger to users table
+-- Apply triggers
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
+    BEFORE UPDATE ON users FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Apply trigger to user_profiles table
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
 CREATE TRIGGER update_user_profiles_updated_at
-    BEFORE UPDATE ON user_profiles
-    FOR EACH ROW
+    BEFORE UPDATE ON user_profiles FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- ============================================
--- HELPER FUNCTIONS
--- ============================================
+DROP TRIGGER IF EXISTS update_properties_updated_at ON properties;
+CREATE TRIGGER update_properties_updated_at
+    BEFORE UPDATE ON properties FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
--- Function to create a new user with profile
-CREATE OR REPLACE FUNCTION create_user_with_profile(
-    p_email VARCHAR,
-    p_password_hash VARCHAR,
-    p_full_name VARCHAR,
-    p_phone VARCHAR,
-    p_user_type VARCHAR
-) RETURNS UUID AS $$
-DECLARE
-    v_user_id UUID;
+DROP TRIGGER IF EXISTS trigger_update_prop_verif ON property_verifications;
+CREATE TRIGGER trigger_update_prop_verif
+    BEFORE UPDATE ON property_verifications FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Advocate response counter
+CREATE OR REPLACE FUNCTION update_advocate_response_count()
+RETURNS TRIGGER AS $$
 BEGIN
-    -- Insert user
-    INSERT INTO users (email, password_hash, full_name, phone, user_type)
-    VALUES (p_email, p_password_hash, p_full_name, p_phone, p_user_type)
-    RETURNING id INTO v_user_id;
-
-    -- Create empty profile
-    INSERT INTO user_profiles (user_id)
-    VALUES (v_user_id);
-
-    RETURN v_user_id;
+    UPDATE advocates SET total_responses = total_responses + 1 WHERE id = NEW.advocate_id;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to clean expired tokens
-CREATE OR REPLACE FUNCTION cleanup_expired_tokens()
-RETURNS void AS $$
-BEGIN
-    DELETE FROM email_verification_tokens WHERE expires_at < CURRENT_TIMESTAMP;
-    DELETE FROM password_reset_tokens WHERE expires_at < CURRENT_TIMESTAMP;
-    DELETE FROM refresh_tokens WHERE expires_at < CURRENT_TIMESTAMP;
-    DELETE FROM user_sessions WHERE expires_at < CURRENT_TIMESTAMP;
-END;
-$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trigger_update_advocate_count ON legal_responses;
+CREATE TRIGGER trigger_update_advocate_count
+    AFTER INSERT ON legal_responses FOR EACH ROW
+    EXECUTE FUNCTION update_advocate_response_count();
+
+-- ============================================
+-- ADMIN SETUP
+-- To create an admin user:
+-- UPDATE users SET is_admin = true WHERE email = 'admin@example.com';
+-- ============================================
+
+SELECT 'BhoomiAI Schema Created Successfully!' AS status;

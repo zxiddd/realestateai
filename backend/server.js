@@ -8,20 +8,48 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './auth.js';
+import propertiesRoutes from './properties.js';
+import marketplaceRoutes from './marketplace.js';
+import queriesRoutes from './queries.js';
+import adminRoutes from './admin.js';
+import verificationsRoutes from './verifications.js';
 
 // Load environment variables
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-// CORS configuration
+// CORS configuration - allow multiple frontend ports
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all for development
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -31,6 +59,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Static file serving for uploads
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Request logging (development only)
 if (process.env.NODE_ENV === 'development') {
@@ -50,7 +81,14 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+console.log('Registering API routes...');
 app.use('/api/auth', authRoutes);
+app.use('/api/properties', propertiesRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/queries', queriesRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/verifications', verificationsRoutes);
+console.log('✅ All API routes registered including /api/verifications');
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -59,7 +97,11 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      auth: '/api/auth'
+      auth: '/api/auth',
+      properties: '/api/properties',
+      marketplace: '/api/marketplace',
+      queries: '/api/queries',
+      admin: '/api/admin'
     }
   });
 });

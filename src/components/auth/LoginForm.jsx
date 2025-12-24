@@ -5,7 +5,7 @@ import Button from '../ui/Button';
  * LOGIN FORM COMPONENT
  * Clean, professional login form with validation
  */
-const LoginForm = ({ onClose, onSwitchToRegister }) => {
+const LoginForm = ({ onClose, onSwitchToRegister, onLoginSuccess }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -73,13 +73,18 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
         // Store tokens
         localStorage.setItem('accessToken', data.data.accessToken);
         localStorage.setItem('refreshToken', data.data.refreshToken);
+        localStorage.setItem('token', data.data.accessToken); // For API calls
         localStorage.setItem('user', JSON.stringify(data.data.user));
 
-        alert(`Welcome back, ${data.data.user.fullName}!`);
-        onClose();
+        console.log('Login successful, user data:', data.data.user);
+        console.log('isAdmin:', data.data.user.isAdmin);
 
-        // Optionally reload or redirect
-        // window.location.reload();
+        // Call success callback to update app state
+        if (onLoginSuccess) {
+          onLoginSuccess(data.data.user);
+        } else {
+          onClose();
+        }
       } else {
         // Handle server errors
         if (data.message) {
@@ -108,9 +113,8 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-              errors.email ? 'border-risk-red' : 'border-gray-300'
-            }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.email ? 'border-risk-red' : 'border-gray-300'
+              }`}
             placeholder="you@example.com"
           />
           {errors.email && (
@@ -129,9 +133,8 @@ const LoginForm = ({ onClose, onSwitchToRegister }) => {
             name="password"
             value={formData.password}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-              errors.password ? 'border-risk-red' : 'border-gray-300'
-            }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.password ? 'border-risk-red' : 'border-gray-300'
+              }`}
             placeholder="Enter your password"
           />
           {errors.password && (

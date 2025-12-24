@@ -122,7 +122,7 @@ router.post('/login', async (req, res) => {
 
     // Get user
     const result = await pool.query(
-      'SELECT id, email, password_hash, full_name, user_type, is_verified FROM users WHERE email = $1 AND is_active = true',
+      'SELECT id, email, password_hash, full_name, user_type, is_verified, is_admin FROM users WHERE email = $1 AND is_active = true',
       [email.toLowerCase()]
     );
 
@@ -163,7 +163,8 @@ router.post('/login', async (req, res) => {
           email: user.email,
           fullName: user.full_name,
           userType: user.user_type,
-          isVerified: user.is_verified
+          isVerified: user.is_verified,
+          isAdmin: user.is_admin || false
         },
         accessToken,
         refreshToken

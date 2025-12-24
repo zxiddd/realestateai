@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/sections/Hero';
 import Problem from './components/sections/Problem';
@@ -12,28 +12,40 @@ import Footer from './components/sections/Footer';
 import Modal from './components/ui/Modal';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
+import Dashboard from './components/dashboard/Dashboard';
+import AdminDashboard from './components/admin/AdminDashboard';
+import AdvocateDashboard from './components/advocate/AdvocateDashboard';
 
 /**
  * MAIN APP COMPONENT
  *
- * BhoomiAI Landing Page
- * Government-grade AI platform for real estate verification and risk analysis
- *
- * Structure:
- * 1. Header/Navigation - Sticky navigation with brand and auth options
- * 2. Hero - Main value proposition and trust indicators
- * 3. Problem - Why property fraud happens in India
- * 4. Solution - How BhoomiAI solves the problem (5-step process)
- * 5. Agentic AI - Explanation of multi-agent AI system
- * 6. Sample Report - Mock verification report to build trust
- * 7. Audience - B2C and B2B use cases
- * 8. Trust & Compliance - Security and legal compliance messaging
- * 9. CTA - Final call-to-action
- * 10. Footer - Links and legal disclaimer
+ * BhoomiAI Platform
+ * - Landing Page for unauthenticated users
+ * - Dashboard for authenticated users (role-based routing)
  */
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+
+  // Check for existing auth on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    const accessToken = localStorage.getItem('accessToken');
+
+    if (storedUser && accessToken) {
+      try {
+        setUser(JSON.parse(storedUser));
+        setIsAuthenticated(true);
+      } catch (e) {
+        // Invalid stored data, clear it
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
+    }
+  }, []);
 
   const handleOpenLogin = () => {
     setIsRegisterOpen(false);
@@ -50,6 +62,41 @@ function App() {
     setIsRegisterOpen(false);
   };
 
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    setIsAuthenticated(true);
+    handleCloseModals();
+  };
+
+  const handleLogout = () => {
+    // Clear auth data
+    localStorage.removeItem('user');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('token');
+
+    // Reset state
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  // Show appropriate Dashboard for authenticated users based on role
+  if (isAuthenticated && user) {
+    // Check if user is admin
+    if (user.isAdmin) {
+      return <AdminDashboard user={user} onLogout={handleLogout} />;
+    }
+
+    // Check if user is advocate
+    if (user.userType === 'advocate') {
+      return <AdvocateDashboard user={user} onLogout={handleLogout} />;
+    }
+
+    // Default: regular user dashboard
+    return <Dashboard user={user} onLogout={handleLogout} />;
+  }
+
+  // Show Landing Page for unauthenticated users
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -97,6 +144,7 @@ function App() {
         <LoginForm
           onClose={handleCloseModals}
           onSwitchToRegister={handleOpenRegister}
+          onLoginSuccess={handleLoginSuccess}
         />
       </Modal>
 

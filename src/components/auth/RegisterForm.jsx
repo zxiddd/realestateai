@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Button from '../ui/Button';
+import { API_BASE } from '../../utils/api';
 
 /**
  * REGISTER FORM COMPONENT
@@ -86,7 +87,7 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
     setErrors({});
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/register', {
+      const response = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,9 +133,8 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
             name="fullName"
             value={formData.fullName}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-              errors.fullName ? 'border-risk-red' : 'border-gray-300'
-            }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.fullName ? 'border-risk-red' : 'border-gray-300'
+              }`}
             placeholder="Enter your full name"
           />
           {errors.fullName && (
@@ -153,9 +153,8 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-              errors.email ? 'border-risk-red' : 'border-gray-300'
-            }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.email ? 'border-risk-red' : 'border-gray-300'
+              }`}
             placeholder="you@example.com"
           />
           {errors.email && (
@@ -174,9 +173,8 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-              errors.phone ? 'border-risk-red' : 'border-gray-300'
-            }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.phone ? 'border-risk-red' : 'border-gray-300'
+              }`}
             placeholder="10-digit mobile number"
             maxLength="10"
           />
@@ -215,9 +213,8 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
             name="password"
             value={formData.password}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-              errors.password ? 'border-risk-red' : 'border-gray-300'
-            }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.password ? 'border-risk-red' : 'border-gray-300'
+              }`}
             placeholder="Create a strong password"
           />
           {errors.password && (
@@ -236,9 +233,8 @@ const RegisterForm = ({ onClose, onSwitchToLogin }) => {
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${
-              errors.confirmPassword ? 'border-risk-red' : 'border-gray-300'
-            }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${errors.confirmPassword ? 'border-risk-red' : 'border-gray-300'
+              }`}
             placeholder="Re-enter your password"
           />
           {errors.confirmPassword && (

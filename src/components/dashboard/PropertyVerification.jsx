@@ -13,7 +13,7 @@ const PropertyVerification = ({ user, onNavigateToAdvocate }) => {
     const [loading, setLoading] = useState(true);
 
     const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
-    const API_BASE = 'http://localhost:3000/api';
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
     useEffect(() => {
         fetchVerifications();

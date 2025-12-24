@@ -95,7 +95,7 @@ const NewVerificationForm = ({ onSubmit, onCancel }) => {
 
             setProgress({ step: 2, message: 'Extracting text from PDFs...' });
 
-            const response = await fetch('http://localhost:3000/api/verifications', {
+            const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:3000/api') + '/verifications', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -204,8 +204,8 @@ const NewVerificationForm = ({ onSubmit, onCancel }) => {
                     <div className="space-y-3">
                         {Object.entries(vData.agent_results || {}).map(([agent, result]) => (
                             <div key={agent} className={`p-3 rounded-lg border ${result.status === 'passed' ? 'bg-green-50 border-green-200' :
-                                    result.status === 'failed' ? 'bg-red-50 border-red-200' :
-                                        'bg-yellow-50 border-yellow-200'
+                                result.status === 'failed' ? 'bg-red-50 border-red-200' :
+                                    'bg-yellow-50 border-yellow-200'
                                 }`}>
                                 <div className="flex items-center gap-2">
                                     <span>{result.status === 'passed' ? '✅' : result.status === 'failed' ? '❌' : '⚠️'}</span>
@@ -302,10 +302,10 @@ const NewVerificationForm = ({ onSubmit, onCancel }) => {
                     <div
                         key={field.key}
                         className={`border-2 rounded-xl p-4 transition-all ${documents[field.key]
-                                ? 'border-green-300 bg-green-50'
-                                : field.required
-                                    ? 'border-gray-200 hover:border-primary-300'
-                                    : 'border-dashed border-gray-200 hover:border-gray-300'
+                            ? 'border-green-300 bg-green-50'
+                            : field.required
+                                ? 'border-gray-200 hover:border-primary-300'
+                                : 'border-dashed border-gray-200 hover:border-gray-300'
                             }`}
                     >
                         <div className="flex items-start gap-4">
